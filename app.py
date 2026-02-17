@@ -14,7 +14,7 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 # Si el modelo flash falla, probamos con una configuración más básica
 try:
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-1.5-pro",
         system_instruction=st.secrets["MY_SECRET_PROMPT"]
     )
 except Exception:
