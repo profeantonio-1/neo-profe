@@ -1,53 +1,52 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Configuración de la página
+# --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
 st.title("🤖 Hola, soy Neo")
 st.subheader("Tu Profe Virtual de Primaria")
 
-# 1. Configurar la API
+# --- CONEXIÓN ---
+# 1. Configurar la API Key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# 2. BUSCADOR DE MODELOS (Para evitar el error 404)
-@st.cache_resource
-def get_working_model():
-    # Buscamos en tu cuenta qué modelos tienes permitidos
-    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    # Prioridad: Gemini 3 -> Gemini 2 -> Gemini 1.5
-    for target in ["models/gemini-3-flash", "models/gemini-2.0-flash", "models/gemini-1.5-flash"]:
-        if target in available_models:
-            return genai.GenerativeModel(model_name=target)
-    # Si no encuentra ninguno de esos, coge el primero que funcione
-    return genai.GenerativeModel(model_name=available_models[0])
+# 2. Configurar el modelo "Caballo de Batalla" (1.5 Flash)
+# IMPORTANTE: No ponemos system_instruction aquí para evitar el Error 404
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-try:
-    model = get_working_model()
-except Exception as e:
-    st.error(f"No se pudo conectar con el cerebro de Google: {e}")
-    st.stop()
-
-# 3. Lógica del Chat
+# --- CHAT ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Mostrar historial
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# --- LÓGICA DE RESPUESTA ---
 if prompt := st.chat_input("¿En qué puedo ayudarte?"):
+    # 1. Guardar y mostrar lo que escribe el alumno
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # 2. Generar respuesta
     try:
-        # Enviamos las instrucciones junto con la pregunta
-        full_prompt = f"{st.secrets['MY_SECRET_PROMPT']}\n\nPregunta del alumno: {prompt}"
-        response = model.generate_content(full_prompt)
+        # TRUCO DEL ALMENDRUCO:
+        # En lugar de configurar el sistema aparte, lo pegamos todo junto.
+        # Esto evita que Google se líe con versiones beta.
+        instrucciones = st.secrets["MY_SECRET_PROMPT"]
+        mensaje_completo = f"{instrucciones}\n\nIMPORTANTE: Responde al alumno que te dice: {prompt}"
         
+        response = model.generate_content(mensaje_completo)
+        
+        # 3. Mostrar respuesta de Neo
         with st.chat_message("assistant"):
             st.markdown(response.text)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
         
     except Exception as e:
-        st.error(f"Error al responder: {e}")
+        # Si falla, mostramos el error limpio
+        st.error("¡Vaya! Neo se ha mareado un poco.")
+        st.code(f"Error técnico: {e}")
+        st.info("Intenta esperar 30 segundos y pregunta de nuevo.")
