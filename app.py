@@ -57,39 +57,33 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. FUNCIÓN DE SEGURIDAD (ACTUALIZADA CON INTRO) ---
+# --- 1. FUNCIÓN DE SEGURIDAD ---
 def check_password():
-    """Devuelve True si el usuario introdujo la contraseña correcta."""
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
-
     if st.session_state.authenticated:
         return True
-
-    # Si no está autenticado, muestra el formulario
     st.title("🔐 Acceso Restringido")
-    
-    # Usamos un formulario para que funcione la tecla Intro
     with st.form("login_form"):
         password_input = st.text_input("Introduce la clave de clase para hablar con Neo:", type="password")
         submit_button = st.form_submit_button("Entrar")
-        
         if submit_button:
             if password_input == st.secrets["CLAVE_ACCESO"]:
                 st.session_state.authenticated = True
-                st.rerun() # Refresca para mostrar el chat
+                st.rerun()
             else:
                 st.error("❌ Clave incorrecta. Pregunta a tu maestro.")
-    
     return False
 
 # --- SOLO SI PASA LA SEGURIDAD, EJECUTAMOS EL RESTO ---
 if check_password():
-    # --- AQUÍ EMPIEZA TU CÓDIGO ORIGINAL (SIN CAMBIOS) ---
     st.title("🤖 Hola, soy Neo")
     st.subheader("Tu Profe Virtual")
 
-    # Recuperamos la API Key y Prompt
+    # --- CAMBIO 1: MOSTRAR EL ORBE AZUL SI NO HAY MENSAJES ---
+    if not st.session_state.get("messages"):
+        st.markdown('<div class="orb-container"><div class="orb idle"></div></div>', unsafe_allow_html=True)
+
     try:
         api_key = st.secrets["GOOGLE_API_KEY"]
         instrucciones_neo = st.secrets["MY_SECRET_PROMPT"]
@@ -99,7 +93,6 @@ if check_password():
 
     genai.configure(api_key=api_key)
 
-    # MANTENEMOS TU MODELO Y CONFIGURACIÓN
     model = genai.GenerativeModel(
         'gemini-2.5-flash-lite',
         system_instruction=instrucciones_neo 
@@ -118,24 +111,30 @@ if check_password():
             st.markdown(prompt)
 
         try:
-            historial_para_google = []
-            for mensaje in st.session_state.messages:
-                rol = "user" if mensaje["role"] == "user" else "model"
-                if mensaje["content"] != prompt: 
-                    historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
-
-            chat = model.start_chat(history=historial_para_google)
-            response = chat.send_message(prompt)
-            
+            # --- CAMBIO 2: ORBE NARANJA MIENTRAS PIENSA ---
             with st.chat_message("assistant"):
+                # Espacio reservado para el orbe naranja
+                placeholder = st.empty()
+                placeholder.markdown('<div class="orb-container"><div class="orb thinking"></div></div>', unsafe_allow_html=True)
+                
+                historial_para_google = []
+                for mensaje in st.session_state.messages:
+                    rol = "user" if mensaje["role"] == "user" else "model"
+                    if mensaje["content"] != prompt: 
+                        historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
+
+                chat = model.start_chat(history=historial_para_google)
+                response = chat.send_message(prompt)
+                
+                # Borramos el orbe y ponemos el texto
+                placeholder.empty()
                 st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
             
         except Exception as e:
             st.error("Neo está pensando...")
             st.info(f"Detalle técnico: {e}")
     
-    # Botón opcional para cerrar sesión (salir)
     if st.sidebar.button("Cerrar sesión de Neo"):
         st.session_state.authenticated = False
         st.session_state.messages = []
