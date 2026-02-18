@@ -4,7 +4,7 @@ import google.generativeai as genai
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
 
-# --- 1. FUNCIÓN DE SEGURIDAD (NUEVA) ---
+# --- 1. FUNCIÓN DE SEGURIDAD (ACTUALIZADA CON INTRO) ---
 def check_password():
     """Devuelve True si el usuario introdujo la contraseña correcta."""
     if "authenticated" not in st.session_state:
@@ -15,14 +15,18 @@ def check_password():
 
     # Si no está autenticado, muestra el formulario
     st.title("🔐 Acceso Restringido")
-    password_input = st.text_input("Introduce la clave de clase para hablar con Neo:", type="password")
     
-    if st.button("Entrar"):
-        if password_input == st.secrets["CLAVE_ACCESO"]:
-            st.session_state.authenticated = True
-            st.rerun() # Refresca para mostrar el chat
-        else:
-            st.error("❌ Clave incorrecta. Pregunta a tu maestro.")
+    # Usamos un formulario para que funcione la tecla Intro
+    with st.form("login_form"):
+        password_input = st.text_input("Introduce la clave de clase para hablar con Neo:", type="password")
+        submit_button = st.form_submit_button("Entrar")
+        
+        if submit_button:
+            if password_input == st.secrets["CLAVE_ACCESO"]:
+                st.session_state.authenticated = True
+                st.rerun() # Refresca para mostrar el chat
+            else:
+                st.error("❌ Clave incorrecta. Pregunta a tu maestro.")
     
     return False
 
