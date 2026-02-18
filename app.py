@@ -4,6 +4,16 @@ import google.generativeai as genai
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
 
+# --- OCULTAR ELEMENTOS DE STREAMLIT ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 # --- 1. FUNCIÓN DE SEGURIDAD (ACTUALIZADA CON INTRO) ---
 def check_password():
     """Devuelve True si el usuario introdujo la contraseña correcta."""
