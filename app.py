@@ -1,45 +1,42 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.set_page_config(page_title="Diagnóstico Neo", page_icon="🛠️")
-st.title("🛠️ Modo Diagnóstico: Buscando a Neo")
+# --- CONFIGURACIÓN DE LA PÁGINA ---
+st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
+st.title("🤖 Hola, soy Neo")
+st.subheader("Tu Profe Virtual de Primaria")
 
-# 1. Configurar API
-try:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    st.success("✅ La API Key se ha cargado correctamente.")
-except Exception as e:
-    st.error(f"❌ Error al cargar la API Key: {e}")
-    st.stop()
+# --- CONEXIÓN ---
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# 2. ESCANEAR MODELOS DISPONIBLES
-st.write("📡 Conectando con Google para ver qué modelos tienes activos...")
+# Usamos el modelo 2.5-flash-lite de tu lista. 
+# Es rápido, moderno y suele tener la cuota gratuita abierta.
+model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
-try:
-    # Pedimos la lista oficial a tu cuenta
-    listado_modelos = list(genai.list_models())
-    
-    encontrados = []
-    
-    st.subheader("📋 Lista oficial de modelos en tu cuenta:")
-    
-    for m in listado_modelos:
-        # Filtramos solo los que sirven para chatear (generateContent)
-        if 'generateContent' in m.supported_generation_methods:
-            st.code(f"Nombre: {m.name}")
-            encontrados.append(m.name)
-            
-    if not encontrados:
-        st.error("⚠️ Tu cuenta conecta con Google, pero Google dice que NO tienes modelos de texto disponibles. (Lista vacía).")
-    else:
-        st.success(f"¡Éxito! Hemos encontrado {len(encontrados)} modelos posibles.")
-        st.info("Antonio, copia la lista de nombres que ves arriba y pégala en el chat con la IA.")
+# --- CHAT ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-except Exception as e:
-    st.error("❌ ERROR CRÍTICO AL LISTAR MODELOS:")
-    st.error(e)
-    st.warning("Si sale error 404 aquí, es que la API Key no tiene permisos de 'Generative Language'.")
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-# Botón para recargar
-if st.button("Volver a escanear"):
-    st.rerun()
+if prompt := st.chat_input("¿En qué puedo ayudarte?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    try:
+        # Metemos las instrucciones del Secret directamente en el mensaje
+        instrucciones = st.secrets["MY_SECRET_PROMPT"]
+        mensaje_para_google = f"{instrucciones}\n\nPregunta del alumno: {prompt}"
+        
+        response = model.generate_content(mensaje_para_google)
+        
+        with st.chat_message("assistant"):
+            st.markdown(response.text)
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+        
+    except Exception as e:
+        st.error("Neo está tomando un café... espera unos segundos.")
+        st.info(f"Nota técnica: {e}")
