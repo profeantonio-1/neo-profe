@@ -1,52 +1,45 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
-st.title("🤖 Hola, soy Neo")
-st.subheader("Tu Profe Virtual de Primaria")
+st.set_page_config(page_title="Diagnóstico Neo", page_icon="🛠️")
+st.title("🛠️ Modo Diagnóstico: Buscando a Neo")
 
-# --- CONEXIÓN ---
-# 1. Configurar la API Key
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+# 1. Configurar API
+try:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    st.success("✅ La API Key se ha cargado correctamente.")
+except Exception as e:
+    st.error(f"❌ Error al cargar la API Key: {e}")
+    st.stop()
 
-# 2. Configurar el modelo "Caballo de Batalla" (1.5 Flash)
-# IMPORTANTE: No ponemos system_instruction aquí para evitar el Error 404
-model = genai.GenerativeModel('gemini-1.5-flash')
+# 2. ESCANEAR MODELOS DISPONIBLES
+st.write("📡 Conectando con Google para ver qué modelos tienes activos...")
 
-# --- CHAT ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+try:
+    # Pedimos la lista oficial a tu cuenta
+    listado_modelos = list(genai.list_models())
+    
+    encontrados = []
+    
+    st.subheader("📋 Lista oficial de modelos en tu cuenta:")
+    
+    for m in listado_modelos:
+        # Filtramos solo los que sirven para chatear (generateContent)
+        if 'generateContent' in m.supported_generation_methods:
+            st.code(f"Nombre: {m.name}")
+            encontrados.append(m.name)
+            
+    if not encontrados:
+        st.error("⚠️ Tu cuenta conecta con Google, pero Google dice que NO tienes modelos de texto disponibles. (Lista vacía).")
+    else:
+        st.success(f"¡Éxito! Hemos encontrado {len(encontrados)} modelos posibles.")
+        st.info("Antonio, copia la lista de nombres que ves arriba y pégala en el chat con la IA.")
 
-# Mostrar historial
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+except Exception as e:
+    st.error("❌ ERROR CRÍTICO AL LISTAR MODELOS:")
+    st.error(e)
+    st.warning("Si sale error 404 aquí, es que la API Key no tiene permisos de 'Generative Language'.")
 
-# --- LÓGICA DE RESPUESTA ---
-if prompt := st.chat_input("¿En qué puedo ayudarte?"):
-    # 1. Guardar y mostrar lo que escribe el alumno
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # 2. Generar respuesta
-    try:
-        # TRUCO DEL ALMENDRUCO:
-        # En lugar de configurar el sistema aparte, lo pegamos todo junto.
-        # Esto evita que Google se líe con versiones beta.
-        instrucciones = st.secrets["MY_SECRET_PROMPT"]
-        mensaje_completo = f"{instrucciones}\n\nIMPORTANTE: Responde al alumno que te dice: {prompt}"
-        
-        response = model.generate_content(mensaje_completo)
-        
-        # 3. Mostrar respuesta de Neo
-        with st.chat_message("assistant"):
-            st.markdown(response.text)
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-        
-    except Exception as e:
-        # Si falla, mostramos el error limpio
-        st.error("¡Vaya! Neo se ha mareado un poco.")
-        st.code(f"Error técnico: {e}")
-        st.info("Intenta esperar 30 segundos y pregunta de nuevo.")
+# Botón para recargar
+if st.button("Volver a escanear"):
+    st.rerun()
