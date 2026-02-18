@@ -4,15 +4,58 @@ import google.generativeai as genai
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
 
-# --- OCULTAR ELEMENTOS DE STREAMLIT ---
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# --- ESTILOS CSS (Orbe y Limpieza de Interfaz) ---
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppDeployButton {display:none;}
+
+    .orb-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px;
+    }
+    
+    /* ORBE BASE */
+    .orb {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        filter: blur(8px);
+        opacity: 0.8;
+        transition: all 0.5s ease;
+    }
+
+    /* ESTADO: TRANQUILO (Azul) */
+    .idle {
+        background: radial-gradient(circle at 30% 30%, #00d4ff, #5d00ff);
+        box-shadow: 0 0 40px #5d00ff;
+        animation: breath 4s infinite ease-in-out;
+    }
+
+    /* ESTADO: PENSANDO (Naranja dinámico) */
+    .thinking {
+        background: radial-gradient(circle at 30% 30%, #ffaa00, #ff4400);
+        box-shadow: 0 0 50px #ff4400;
+        animation: pulse-fast 0.8s infinite alternate ease-in-out;
+        width: 120px;
+        height: 120px;
+    }
+
+    @keyframes breath {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.9; }
+    }
+
+    @keyframes pulse-fast {
+        0% { transform: scale(1); filter: blur(5px); }
+        100% { transform: scale(1.2); filter: blur(15px); }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 1. FUNCIÓN DE SEGURIDAD (ACTUALIZADA CON INTRO) ---
 def check_password():
