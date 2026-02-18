@@ -3,72 +3,83 @@ import google.generativeai as genai
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
-st.title("🤖 Hola, soy Neo")
-st.subheader("Tu Profe Virtual de Primaria")
 
-# --- CONEXIÓN ---
-# Recuperamos la API Key
-try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    instrucciones_neo = st.secrets["MY_SECRET_PROMPT"]
-except Exception:
-    st.error("Error: No encuentro los Secrets (API Key o Prompt).")
-    st.stop()
+# --- 1. FUNCIÓN DE SEGURIDAD (NUEVA) ---
+def check_password():
+    """Devuelve True si el usuario introdujo la contraseña correcta."""
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
 
-genai.configure(api_key=api_key)
+    if st.session_state.authenticated:
+        return True
 
-# --- CONFIGURACIÓN DEL MODELO ---
-# MANTENEMOS TU MODELO EXACTO: 'gemini-2.5-flash-lite'
-# CAMBIO IMPORTANTE 1: Metemos las instrucciones AQUÍ, en la configuración inicial.
-# Así Neo "nace" sabiendo que es un profe y no se le olvida.
-model = genai.GenerativeModel(
-    'gemini-2.5-flash-lite',
-    system_instruction=instrucciones_neo 
-)
-
-# --- CHAT ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Mostramos lo que ya se ha hablado en pantalla
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# --- LÓGICA DE INTERACCIÓN ---
-if prompt := st.chat_input("¿En qué puedo ayudarte?"):
+    # Si no está autenticado, muestra el formulario
+    st.title("🔐 Acceso Restringido")
+    password_input = st.text_input("Introduce la clave de clase para hablar con Neo:", type="password")
     
-    # 1. Guardamos y mostramos tu pregunta
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    if st.button("Entrar"):
+        if password_input == st.secrets["CLAVE_ACCESO"]:
+            st.session_state.authenticated = True
+            st.rerun() # Refresca para mostrar el chat
+        else:
+            st.error("❌ Clave incorrecta. Pregunta a tu maestro.")
+    
+    return False
 
+# --- SOLO SI PASA LA SEGURIDAD, EJECUTAMOS EL RESTO ---
+if check_password():
+    # --- AQUÍ EMPIEZA TU CÓDIGO ORIGINAL (SIN CAMBIOS) ---
+    st.title("🤖 Hola, soy Neo")
+    st.subheader("Tu Profe Virtual de Primaria")
+
+    # Recuperamos la API Key y Prompt
     try:
-        # CAMBIO IMPORTANTE 2: CREAR LA MEMORIA
-        # Convertimos el chat de Streamlit al formato que entiende Google
-        historial_para_google = []
-        for mensaje in st.session_state.messages:
-            # Traducimos 'user'/'assistant' a 'user'/'model'
-            rol = "user" if mensaje["role"] == "user" else "model"
-            # Omitimos el último mensaje del usuario para enviarlo con send_message después
-            # (Esto evita duplicarlo si la lógica de chat lo requiere, pero
-            # la forma más segura es cargar el historial previo y enviar el nuevo).
-            if mensaje["content"] != prompt: 
-                historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
+        api_key = st.secrets["GOOGLE_API_KEY"]
+        instrucciones_neo = st.secrets["MY_SECRET_PROMPT"]
+    except Exception:
+        st.error("Error: No encuentro los Secrets.")
+        st.stop()
 
-        # Iniciamos el chat con el historial PREVIO (Memoria)
-        chat = model.start_chat(history=historial_para_google)
-        
-        # Enviamos el mensaje NUEVO
-        response = chat.send_message(prompt)
-        
-        # 2. Mostramos la respuesta de Neo
-        with st.chat_message("assistant"):
-            st.markdown(response.text)
-        
-        # 3. Guardamos la respuesta en el historial
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-        
-    except Exception as e:
-        st.error("Neo está pensando... (o ha ocurrido un error de conexión).")
-        st.info(f"Detalle técnico: {e}")
+    genai.configure(api_key=api_key)
+
+    # MANTENEMOS TU MODELO Y CONFIGURACIÓN
+    model = genai.GenerativeModel(
+        'gemini-2.5-flash-lite',
+        system_instruction=instrucciones_neo 
+    )
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if prompt := st.chat_input("¿En qué puedo ayudarte?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        try:
+            historial_para_google = []
+            for mensaje in st.session_state.messages:
+                rol = "user" if mensaje["role"] == "user" else "model"
+                if mensaje["content"] != prompt: 
+                    historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
+
+            chat = model.start_chat(history=historial_para_google)
+            response = chat.send_message(prompt)
+            
+            with st.chat_message("assistant"):
+                st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
+        except Exception as e:
+            st.error("Neo está pensando...")
+            st.info(f"Detalle técnico: {e}")
+    
+    # Botón opcional para cerrar sesión (salir)
+    if st.sidebar.button("Cerrar sesión de Neo"):
+        st.session_state.authenticated = False
+        st.session_state.messages = []
+        st.rerun()
