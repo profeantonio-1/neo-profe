@@ -4,7 +4,7 @@ import google.generativeai as genai
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Neo: Tu Profe Virtual", page_icon="🤖")
 
-# --- ESTILOS CSS (Orbe y Limpieza de Interfaz) ---
+# --- ESTILOS CSS (Orbe HD y Limpieza) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -16,43 +16,29 @@ st.markdown("""
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 10px;
+        padding: 40px; /* Un poco más de aire arriba */
     }
     
-    /* ORBE BASE */
+    /* ORBE AZUL HD (Más nítido y 3D) */
     .orb {
-        width: 100px;
-        height: 100px;
+        width: 140px; /* Un poco más grande para que luzca */
+        height: 140px;
         border-radius: 50%;
-        filter: blur(8px);
-        opacity: 0.8;
-        transition: all 0.5s ease;
+        
+        /* Degradado complejo para dar efecto de esfera nítida */
+        background: radial-gradient(circle at 30% 30%, #aeeeee, #00d4ff, #005aff);
+        
+        /* Sombra externa para el brillo (glow) sin desenfocar la bola */
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.6), inset -10px -10px 20px rgba(0,0,0,0.2);
+        
+        /* Animación suave */
+        animation: floatAndBreath 6s infinite ease-in-out;
     }
 
-    /* ESTADO: TRANQUILO (Azul) */
-    .idle {
-        background: radial-gradient(circle at 30% 30%, #00d4ff, #5d00ff);
-        box-shadow: 0 0 40px #5d00ff;
-        animation: breath 4s infinite ease-in-out;
-    }
-
-    /* ESTADO: PENSANDO (Naranja dinámico) */
-    .thinking {
-        background: radial-gradient(circle at 30% 30%, #ffaa00, #ff4400);
-        box-shadow: 0 0 50px #ff4400;
-        animation: pulse-fast 0.8s infinite alternate ease-in-out;
-        width: 120px;
-        height: 120px;
-    }
-
-    @keyframes breath {
-        0%, 100% { transform: scale(1); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 0.9; }
-    }
-
-    @keyframes pulse-fast {
-        0% { transform: scale(1); filter: blur(5px); }
-        100% { transform: scale(1.2); filter: blur(15px); }
+    @keyframes floatAndBreath {
+        0% { transform: translateY(0px) scale(1); box-shadow: 0 0 30px rgba(0, 212, 255, 0.6); }
+        50% { transform: translateY(-10px) scale(1.05); box-shadow: 0 0 50px rgba(0, 212, 255, 0.9); }
+        100% { transform: translateY(0px) scale(1); box-shadow: 0 0 30px rgba(0, 212, 255, 0.6); }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -80,56 +66,59 @@ if check_password():
     st.title("🤖 Hola, soy Neo")
     st.subheader("Tu Profe Virtual")
 
-    # --- CAMBIO 1: MOSTRAR EL ORBE AZUL SI NO HAY MENSAJES ---
+    # --- ORBE AZUL (SOLO SI NO HAY MENSAJES) ---
     if not st.session_state.get("messages"):
-        st.markdown('<div class="orb-container"><div class="orb idle"></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="orb-container"><div class="orb"></div></div>', unsafe_allow_html=True)
+        # Un pequeño mensaje de bienvenida debajo del orbe
+        st.markdown("<p style='text-align: center; color: grey;'>Hazme una pregunta para empezar...</p>", unsafe_allow_html=True)
 
     try:
         api_key = st.secrets["GOOGLE_API_KEY"]
         instrucciones_neo = st.secrets["MY_SECRET_PROMPT"]
+        genai.configure(api_key=api_key)
+
+        # Mantenemos el modelo que funciona bien
+        model = genai.GenerativeModel(
+            'gemini-2.5-flash',
+            system_instruction=instrucciones_neo 
+        )
     except Exception:
         st.error("Error: No encuentro los Secrets.")
         st.stop()
 
-    genai.configure(api_key=api_key)
-
-    model = genai.GenerativeModel(
-        'gemini-2.5-flash',
-        system_instruction=instrucciones_neo 
-    )
-
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Mostrar historial
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # Input del usuario
     if prompt := st.chat_input("¿En qué puedo ayudarte?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
+        # Generación de respuesta (SIN orbe naranja, simple y directo)
         try:
-            # --- CAMBIO 2: ORBE NARANJA MIENTRAS PIENSA ---
-            with st.chat_message("assistant"):
-                # Espacio reservado para el orbe naranja
-                placeholder = st.empty()
-                placeholder.markdown('<div class="orb-container"><div class="orb thinking"></div></div>', unsafe_allow_html=True)
-                
-                historial_para_google = []
-                for mensaje in st.session_state.messages:
-                    rol = "user" if mensaje["role"] == "user" else "model"
-                    if mensaje["content"] != prompt: 
-                        historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
+            historial_para_google = []
+            for mensaje in st.session_state.messages:
+                rol = "user" if mensaje["role"] == "user" else "model"
+                if mensaje["content"] != prompt: 
+                    historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
 
-                chat = model.start_chat(history=historial_para_google)
-                response = chat.send_message(prompt)
-                
-                # Borramos el orbe y ponemos el texto
-                placeholder.empty()
+            chat = model.start_chat(history=historial_para_google)
+            response = chat.send_message(prompt)
+            
+            with st.chat_message("assistant"):
                 st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
+            # Forzamos recarga para que el orbe azul desaparezca si era la primera pregunta
+            if len(st.session_state.messages) <= 2:
+                st.rerun()
             
         except Exception as e:
             st.error("Neo está pensando...")
