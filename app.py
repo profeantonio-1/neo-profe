@@ -94,7 +94,7 @@ if check_password():
     genai.configure(api_key=api_key)
 
     model = genai.GenerativeModel(
-        'gemini-2.5-flash-lite',
+        'gemini-1.5-flash',
         system_instruction=instrucciones_neo 
     )
 
