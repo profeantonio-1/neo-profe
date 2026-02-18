@@ -44,7 +44,7 @@ def check_password():
 if check_password():
     # --- AQUÍ EMPIEZA TU CÓDIGO ORIGINAL (SIN CAMBIOS) ---
     st.title("🤖 Hola, soy Neo")
-    st.subheader("Tu Profe Virtual de Primaria")
+    st.subheader("Tu Profe Virtual")
 
     # Recuperamos la API Key y Prompt
     try:
