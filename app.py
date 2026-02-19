@@ -79,7 +79,7 @@ if check_password():
 
         # Mantenemos el modelo que funciona bien
         model = genai.GenerativeModel(
-            'gemini-2.5-flash',
+            'gemini-2.0-flash',
             system_instruction=instrucciones_neo 
         )
     except Exception:
