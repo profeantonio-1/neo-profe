@@ -16,22 +16,15 @@ st.markdown("""
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 40px; /* Un poco más de aire arriba */
+        padding: 40px; 
     }
     
-    /* ORBE AZUL HD (Más nítido y 3D) */
     .orb {
-        width: 140px; /* Un poco más grande para que luzca */
+        width: 140px; 
         height: 140px;
         border-radius: 50%;
-        
-        /* Degradado complejo para dar efecto de esfera nítida */
         background: radial-gradient(circle at 30% 30%, #aeeeee, #00d4ff, #005aff);
-        
-        /* Sombra externa para el brillo (glow) sin desenfocar la bola */
         box-shadow: 0 0 30px rgba(0, 212, 255, 0.6), inset -10px -10px 20px rgba(0,0,0,0.2);
-        
-        /* Animación suave */
         animation: floatAndBreath 6s infinite ease-in-out;
     }
 
@@ -66,18 +59,15 @@ if check_password():
     st.title("🤖 Hola, soy Neo")
     st.subheader("Tu Profe Virtual")
 
-    # --- ORBE AZUL (SOLO SI NO HAY MENSAJES) ---
     if not st.session_state.get("messages"):
         st.markdown('<div class="orb-container"><div class="orb"></div></div>', unsafe_allow_html=True)
-        # Un pequeño mensaje de bienvenida debajo del orbe
-        st.markdown("<p style='text-align: center; color: grey;'>Hazme una pregunta para empezar...</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: grey;'>Escríbeme o pulsa el micrófono para hablar...</p>", unsafe_allow_html=True)
 
     try:
         api_key = st.secrets["GOOGLE_API_KEY"]
         instrucciones_neo = st.secrets["MY_SECRET_PROMPT"]
         genai.configure(api_key=api_key)
 
-        # Mantenemos el modelo que funciona bien
         model = genai.GenerativeModel(
             'gemini-flash-latest',
             system_instruction=instrucciones_neo 
@@ -94,22 +84,55 @@ if check_password():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Input del usuario
-    if prompt := st.chat_input("¿En qué puedo ayudarte?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    # --- ZONA DE ENTRADA DE DATOS ---
+    mensaje_usuario = None
 
-        # Generación de respuesta (SIN orbe naranja, simple y directo)
+    # 1. Entrada por Teclado
+    prompt_texto = st.chat_input("¿En qué puedo ayudarte?")
+    if prompt_texto:
+        mensaje_usuario = prompt_texto
+
+    # 2. Entrada por Micrófono
+    audio_value = st.audio_input("🎤 Toca para hablar con Neo")
+    
+    # Si hay un audio nuevo (evitamos procesar el mismo audio dos veces)
+    if audio_value and st.session_state.get('ultimo_audio') != audio_value:
+        st.session_state.ultimo_audio = audio_value
+        
+        with st.spinner("Neo está escuchando..."):
+            try:
+                # Preparamos el audio para que Neo lo escuche
+                audio_data = {"mime_type": "audio/wav", "data": audio_value.getvalue()}
+                
+                # Le pedimos a Neo que SOLO transcriba lo que escucha
+                respuesta_transcripcion = model.generate_content([
+                    audio_data, 
+                    "Transcribe exactamente lo que se dice en este audio. Escribe solo el texto de la transcripción, sin añadir ninguna otra palabra tuya."
+                ])
+                # Añadimos un pequeño icono para que sepan que ese texto viene de su voz
+                mensaje_usuario = f"🎤 {respuesta_transcripcion.text}"
+                
+            except Exception as e:
+                st.error("Neo no ha podido escuchar bien el audio. Prueba a hablar más cerca.")
+
+    # --- PROCESAMIENTO DE LA PREGUNTA (Venga de texto o de audio) ---
+    if mensaje_usuario:
+        # 1. Mostramos lo que el niño ha dicho/escrito en pantalla
+        st.session_state.messages.append({"role": "user", "content": mensaje_usuario})
+        with st.chat_message("user"):
+            st.markdown(mensaje_usuario)
+
+        # 2. Neo piensa su respuesta a esa pregunta
         try:
             historial_para_google = []
             for mensaje in st.session_state.messages:
                 rol = "user" if mensaje["role"] == "user" else "model"
-                if mensaje["content"] != prompt: 
+                # Excluimos el mensaje actual para no duplicarlo en la llamada a la API
+                if mensaje["content"] != mensaje_usuario: 
                     historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
 
             chat = model.start_chat(history=historial_para_google)
-            response = chat.send_message(prompt)
+            response = chat.send_message(mensaje_usuario)
             
             with st.chat_message("assistant"):
                 st.markdown(response.text)
@@ -121,10 +144,11 @@ if check_password():
                 st.rerun()
             
         except Exception as e:
-            st.error("Neo está pensando...")
+            st.error("Neo está pensando y tuvo un pequeño lapsus...")
             st.info(f"Detalle técnico: {e}")
     
     if st.sidebar.button("Cerrar sesión de Neo"):
         st.session_state.authenticated = False
         st.session_state.messages = []
+        st.session_state.ultimo_audio = None
         st.rerun()
