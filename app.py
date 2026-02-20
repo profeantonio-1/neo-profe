@@ -61,7 +61,7 @@ if check_password():
 
     if not st.session_state.get("messages"):
         st.markdown('<div class="orb-container"><div class="orb"></div></div>', unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: grey;'>Escríbeme o pulsa el micrófono para hablar...</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: grey;'>Escríbeme o usa el micrófono para hablar...</p>", unsafe_allow_html=True)
 
     try:
         api_key = st.secrets["GOOGLE_API_KEY"]
@@ -87,47 +87,41 @@ if check_password():
     # --- ZONA DE ENTRADA DE DATOS ---
     mensaje_usuario = None
 
-    # 1. Entrada por Teclado
+    # 1. Entrada por Micrófono (Lo más limpio posible ocultando la etiqueta)
+    audio_value = st.audio_input("Audio", label_visibility="collapsed")
+    
+    # 2. Entrada por Teclado
     prompt_texto = st.chat_input("¿En qué puedo ayudarte?")
+    
     if prompt_texto:
         mensaje_usuario = prompt_texto
 
-    # 2. Entrada por Micrófono
-    audio_value = st.audio_input("🎤 Toca para hablar con Neo")
-    
-    # Si hay un audio nuevo (evitamos procesar el mismo audio dos veces)
+    # Si hay un audio nuevo
     if audio_value and st.session_state.get('ultimo_audio') != audio_value:
         st.session_state.ultimo_audio = audio_value
         
         with st.spinner("Neo está escuchando..."):
             try:
-                # Preparamos el audio para que Neo lo escuche
                 audio_data = {"mime_type": "audio/wav", "data": audio_value.getvalue()}
-                
-                # Le pedimos a Neo que SOLO transcriba lo que escucha
                 respuesta_transcripcion = model.generate_content([
                     audio_data, 
                     "Transcribe exactamente lo que se dice en este audio. Escribe solo el texto de la transcripción, sin añadir ninguna otra palabra tuya."
                 ])
-                # Añadimos un pequeño icono para que sepan que ese texto viene de su voz
                 mensaje_usuario = f"🎤 {respuesta_transcripcion.text}"
                 
             except Exception as e:
                 st.error("Neo no ha podido escuchar bien el audio. Prueba a hablar más cerca.")
 
-    # --- PROCESAMIENTO DE LA PREGUNTA (Venga de texto o de audio) ---
+    # --- PROCESAMIENTO DE LA PREGUNTA ---
     if mensaje_usuario:
-        # 1. Mostramos lo que el niño ha dicho/escrito en pantalla
         st.session_state.messages.append({"role": "user", "content": mensaje_usuario})
         with st.chat_message("user"):
             st.markdown(mensaje_usuario)
 
-        # 2. Neo piensa su respuesta a esa pregunta
         try:
             historial_para_google = []
             for mensaje in st.session_state.messages:
                 rol = "user" if mensaje["role"] == "user" else "model"
-                # Excluimos el mensaje actual para no duplicarlo en la llamada a la API
                 if mensaje["content"] != mensaje_usuario: 
                     historial_para_google.append({"role": rol, "parts": [mensaje["content"]]})
 
@@ -139,7 +133,6 @@ if check_password():
             
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
-            # Forzamos recarga para que el orbe azul desaparezca si era la primera pregunta
             if len(st.session_state.messages) <= 2:
                 st.rerun()
             
