@@ -69,7 +69,7 @@ if check_password():
         genai.configure(api_key=api_key)
 
         model = genai.GenerativeModel(
-            'gemini-2.0-flash-lite',
+            'gemini-flash-lite-latest',
             system_instruction=instrucciones_neo 
         )
     except Exception:
