@@ -202,6 +202,21 @@ if check_password():
     # --- BARRA LATERAL (Cerrar sesión e info) ---
     with st.sidebar:
         st.write(f"📍 Nivel actual guardado: **{st.session_state.curso_alumno}**")
+       # --- NUEVO CHIVATO VISUAL DE MODO ---
+        st.write("") # Pequeño espacio
+        if st.session_state.modo_investigador:
+            st.markdown("""
+            <div style='background-color: #ff9800; padding: 10px; border-radius: 8px; color: white; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                <b>🔍 MODO INVESTIGADOR ACTIVADO</b>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style='background-color: #005aff; padding: 10px; border-radius: 8px; color: white; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                <b>🧠 MODO TUTOR (Socrático)</b>
+            </div>
+            """, unsafe_allow_html=True)
+            
         st.divider()
         if st.button("Cerrar sesión de Neo"):
             st.session_state.authenticated = False
