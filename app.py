@@ -202,7 +202,7 @@ if check_password():
     # --- BARRA LATERAL (Cerrar sesión e info) ---
     with st.sidebar:
         st.write(f"📍 Nivel actual guardado: **{st.session_state.curso_alumno}**")
-       # --- NUEVO CHIVATO VISUAL DE MODO ---
+      # --- NUEVO CHIVATO VISUAL DE MODO ---
         st.write("") # Pequeño espacio
         if st.session_state.modo_investigador:
             st.markdown("""
