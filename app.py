@@ -222,3 +222,17 @@ if check_password():
             st.session_state.authenticated = False
             st.session_state.messages = []
             st.rerun()
+            # --- SELLO DE AUTORÍAS Y PROTECCIÓN ---
+        st.write("") 
+        st.markdown("---")
+        st.markdown(
+            """
+            <div style='text-align: center; color: #666666; font-size: 0.85rem; line-height: 1.4;'>
+                <p style='margin-bottom: 5px;'>© 2026 <b>NEO, tu profe virutal</b></p>
+                <p style='margin-bottom: 5px;'>Propiedad Intelectual de:<br>
+                <span style='color: #005aff; font-weight: bold;'>Antonio M. López Martí</span></p>
+                <p style='font-size: 0.75rem; font-style: italic;'>Uso educativo restringido.</p>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
